@@ -1,0 +1,33 @@
+.dash-wrap { padding: 20px; display: grid; gap: 16px; }
+.dash-header { display: flex; align-items: center; justify-content: space-between; }
+.dash-title { margin: 0; }
+.dash-sub { color: #777; margin-top: 4px; }
+.muted { color: #888; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+.dash-counters { display: flex; align-items: center; gap: 8px; }
+.pill { background: #f2f4f7; padding: 6px 10px; border-radius: 999px; font-size: 14px; }
+.timer { font-weight: 700; padding: 6px 10px; border-radius: 8px; background: #f4f4f4; }
+.timer.ok { background: #e6ffed; color: #067d24; }
+
+.card-panel { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 14px; }
+.grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.cycle-row { display: grid; grid-template-columns: 1.5fr 1fr 2fr 1fr; gap: 12px; align-items: end; }
+.lbl { font-size: 12px; color: #999; }
+.status { font-weight: 600; text-transform: uppercase; font-size: 12px; color: #8a8a8a; }
+.status.open { color: #006adc; }
+.status.aggregated { color: #067d24; }
+.grow { width: 100%; }
+
+.feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.feed-item { padding: 10px 12px; border: 1px solid #eee; border-radius: 10px; display:flex; gap:10px; align-items:center; }
+.tag { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; padding: 2px 6px; border-radius: 6px; background:#f1f1f1; }
+.tag.hospital { background:#000000; color:#003eaa; }
+.tag.patient { background:#000000; color:#9a5700; }
+.tag.agg { background:#000000; color:#067d24; }
+.tag.model { background:#000000; color:#333; }
+.tag.opened { background:#000000; color:#0b6b8c; }
+.time { margin-left:auto; color:#999; font-size:12px; }
+
+.kv { display: grid; gap: 8px; }
+.kv-row { display:flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding-bottom: 6px; }

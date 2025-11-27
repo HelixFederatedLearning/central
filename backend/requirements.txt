@@ -1,0 +1,12 @@
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+
+# Pydantic v2 stack
+pydantic==2.9.2
+pydantic-settings==2.6.1
+
+sqlmodel==0.0.22
+python-multipart==0.0.9
+typing-extensions==4.12.2
+
+torch
