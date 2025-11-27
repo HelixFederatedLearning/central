@@ -1,78 +1,34 @@
+// client/src/lib/useOnnxClient.ts
 import { useEffect, useRef, useState } from "react";
 import * as ort from "onnxruntime-web";
-import { get, set, del } from "idb-keyval";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
-const CLASSES = ["No_DR","Mild","Moderate","Severe","Proliferative_DR"];
-const SIZE = 224;
-
-type CurrentModelResp = {
+type ModelInfo = {
   id: string;
   version: string;
   checksum: string;
   created_at: string;
-  url: string;        // .pth
-  onnx_url?: string;  // .onnx
+  url: string;        // .pth (unused in browser)
+  onnx_url?: string;  // e.g. /artifacts/<id>/global.onnx
 };
 
-function softmax(arr: number[]) {
-  const m = Math.max(...arr);
-  const exps = arr.map(v => Math.exp(v - m));
-  const s = exps.reduce((a,b)=>a+b,0);
-  return exps.map(v => v/s);
-}
+type Status = "idle" | "loading" | "ready" | "error";
 
-async function imageToNCHWTensor(file: File) {
-  const bmp = await createImageBitmap(file);
-  // offscreen if available; fallback to normal canvas
-  const canvas: HTMLCanvasElement = document.createElement("canvas");
-  canvas.width = SIZE; canvas.height = SIZE;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
-  // fit image into 224x224 (letterbox)
-  const scale = Math.min(SIZE / bmp.width, SIZE / bmp.height);
-  const w = bmp.width * scale, h = bmp.height * scale;
-  const x = (SIZE - w) / 2, y = (SIZE - h) / 2;
-  ctx.clearRect(0,0,SIZE,SIZE);
-  ctx.drawImage(bmp, x, y, w, h);
+const CENTRAL_BASE = (import.meta.env.VITE_CENTRAL_BASE as string) || "http://localhost:8000";
+const CLASSES = ["No_DR", "Mild", "Moderate", "Severe", "Proliferative_DR"];
 
-  const { data } = ctx.getImageData(0, 0, SIZE, SIZE);
-  const chw = new Float32Array(3 * SIZE * SIZE);
-  const stride = SIZE * SIZE;
-  for (let i = 0, p = 0; i < stride; i++, p += 4) {
-    const r = data[p] / 255;
-    const g = data[p+1] / 255;
-    const b = data[p+2] / 255;
-    chw[i] = r; chw[i + stride] = g; chw[i + 2*stride] = b;
-  }
-  return new ort.Tensor("float32", chw, [1,3,SIZE,SIZE]);
-}
-
-const isArrayBuffer = (v: unknown): v is ArrayBuffer => v instanceof ArrayBuffer;
-const isUint8Array  = (v: unknown): v is Uint8Array  => v instanceof Uint8Array;
-const toUint8Array  = (v: unknown) => (isUint8Array(v) ? v : isArrayBuffer(v) ? new Uint8Array(v) : null);
+// ORT WASM setup (must be before creating a session)
+ort.env.wasm.wasmPaths = "/ort/";   // served from client/public/ort
+ort.env.wasm.numThreads = 1;        // avoid cross-origin isolation issues
+ort.env.wasm.proxy = false;
+ort.env.wasm.simd = true;
 
 export function useOnnxClient() {
-  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [model, setModel] = useState<CurrentModelResp | null>(null);
+  const [model, setModel] = useState<ModelInfo | null>(null);
   const sessionRef = useRef<ort.InferenceSession | null>(null);
-
-  // Configure ORT wasm (do this ONCE before creating a session)
-  useEffect(() => {
-    // Choose ONE of the two lines below:
-
-    // A) Local (requires public/ort/* present)
-    ort.env.wasm.wasmPaths = "/ort/";
-
-    // B) CDN (uncomment this if you don’t want local files)
-    // ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.0/dist/";
-
-    ort.env.wasm.proxy = false;       // workerless (no COOP/COEP needed)
-    try {
-      const cores = (navigator as any).hardwareConcurrency ?? 2;
-      ort.env.wasm.numThreads = Math.max(1, Math.min(cores, 4));
-    } catch {}
-  }, []);
+  const inputNameRef = useRef<string | null>(null);
+  const outputNameRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,75 +37,104 @@ export function useOnnxClient() {
         setStatus("loading");
         setError(null);
 
-        // 1) Get current model
-        const r = await fetch(`${API_BASE}/v1/models/current`);
-        if (!r.ok) throw new Error(`GET /v1/models/current -> ${r.status}`);
-        const meta: CurrentModelResp = await r.json();
-        setModel(meta);
-
-        const modelURL = meta.onnx_url ? `${API_BASE}${meta.onnx_url}` : "";
-        if (!modelURL) throw new Error("No ONNX model available (onnx_url missing)");
-
-        // 2) Try to create session by URL directly
-        try {
-          const s1 = await ort.InferenceSession.create(modelURL, {
-            executionProviders: ["wasm"],
-            graphOptimizationLevel: "all",
-          });
-          if (cancelled) return;
-          sessionRef.current = s1;
-          setStatus("ready");
-          return;
-        } catch (e) {
-          console.warn("[ORT] URL session failed, falling back to buffer:", (e as any)?.message || e);
+        // 1) Get current model meta from central
+        const r = await fetch(`${CENTRAL_BASE}/v1/models/current`);
+        if (!r.ok) {
+          const t = await r.text().catch(() => "");
+          throw new Error(`GET /v1/models/current failed: ${r.status} ${r.statusText} — ${t}`);
         }
+        const m: ModelInfo = await r.json();
+        if (cancelled) return;
+        setModel(m);
 
-        // 3) Fallback: fetch as ArrayBuffer and cache in IndexedDB
-        let buf: Uint8Array | null = null;
-        const cached = await get(modelURL);
-        if (cached) {
-          const arr = toUint8Array(cached);
-          if (arr) buf = arr; else await del(modelURL);
+        // 2) Must have an ONNX URL
+        if (!m.onnx_url) {
+          throw new Error("Central returned no onnx_url for the current model.");
         }
-        if (!buf) {
-          const rf = await fetch(modelURL, { cache: "force-cache" });
-          if (!rf.ok) {
-            const txt = await rf.text().catch(()=> "");
-            throw new Error(`Fetch ONNX failed: ${rf.status} ${rf.statusText} — ${txt.slice(0,200)}`);
-          }
-          const ab = await rf.arrayBuffer();
-          await set(modelURL, ab);
-          buf = new Uint8Array(ab);
-        }
+        const onnxUrl = `${CENTRAL_BASE}${m.onnx_url}`;
 
-        const s2 = await ort.InferenceSession.create(buf, {
+        // 3) Load ORT session
+        const session = await ort.InferenceSession.create(onnxUrl, {
           executionProviders: ["wasm"],
           graphOptimizationLevel: "all",
         });
         if (cancelled) return;
-        sessionRef.current = s2;
+
+        sessionRef.current = session;
+
+        // Discover input/output names dynamically
+        const inputs = session.inputNames;
+        const outputs = session.outputNames;
+        if (!inputs?.length || !outputs?.length) {
+          throw new Error(`ONNX model has no inputs/outputs. inputs=${inputs?.length} outputs=${outputs?.length}`);
+        }
+        inputNameRef.current = inputs[0];
+        outputNameRef.current = outputs[0];
+
         setStatus("ready");
       } catch (e: any) {
-        if (!cancelled) {
-          setError(e?.message || String(e));
-          setStatus("error");
-        }
+        setError(e?.message || String(e));
+        setStatus("error");
       }
     })();
     return () => { cancelled = true; };
   }, []);
 
   async function predict(file: File) {
+    if (!file) throw new Error("No file provided");
     if (!sessionRef.current) throw new Error("Model not ready");
-    const x = await imageToNCHWTensor(file);
-    const inputName = sessionRef.current.inputNames[0];
-    const outputName = sessionRef.current.outputNames[0];
-    const out = await sessionRef.current.run({ [inputName]: x });
-    const logits = Array.from(out[outputName].data as Float32Array);
-    const probs = softmax(logits);
-    return CLASSES.map((label, i) => ({ label, prob: probs[i] ?? 0 }))
-                  .sort((a,b) => b.prob - a.prob);
+    const inputName = inputNameRef.current!;
+    const outputName = outputNameRef.current!;
+
+    const img = await fileToImageData(file, 224, 224);
+    const tensor = toCHWTensor(img, 224);
+    try {
+      const out = await sessionRef.current.run({ [inputName]: tensor });
+      const tensorOut = out[outputName] ?? Object.values(out)[0];
+      const logits = Array.from(tensorOut.data as Float32Array);
+      const probs = softmax(logits);
+      return CLASSES.map((label, i) => ({ label, prob: probs[i] ?? 0 }))
+        .sort((a, b) => b.prob - a.prob);
+    } catch (err: any) {
+      // Helpful message if input name mismatch happens
+      throw new Error(`ORT run failed: ${err?.message || err}. Input="${inputName}", Output="${outputName}"`);
+    }
   }
 
   return { status, error, model, predict, CLASSES };
+}
+
+/* ---------- helpers ---------- */
+function softmax(arr: number[]) {
+  const m = Math.max(...arr);
+  const exps = arr.map(v => Math.exp(v - m));
+  const s = exps.reduce((a, b) => a + b, 0);
+  return exps.map(v => v / s);
+}
+
+async function fileToImageData(file: File, W: number, H: number): Promise<ImageData> {
+  const bmp = await createImageBitmap(file);
+  const canvas = typeof OffscreenCanvas !== "undefined"
+    ? new OffscreenCanvas(W, H)
+    : (() => { const c = document.createElement("canvas"); c.width = W; c.height = H; return c; })();
+  const ctx = (canvas as any).getContext("2d", { willReadFrequently: true }) as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+  ctx.drawImage(bmp, 0, 0, W, H);
+  return ctx.getImageData(0, 0, W, H);
+}
+
+function toCHWTensor(img: ImageData, size: number) {
+  const chw = new Float32Array(3 * size * size);
+  const ch = size * size;
+  const data = img.data;
+  let i = 0;
+  for (let p = 0; p < size * size; p++) {
+    const r = data[i++] / 255;
+    const g = data[i++] / 255;
+    const b = data[i++] / 255;
+    i++;
+    chw[p] = r;
+    chw[p + ch] = g;
+    chw[p + 2 * ch] = b;
+  }
+  return new ort.Tensor("float32", chw, [1, 3, size, size]);
 }
