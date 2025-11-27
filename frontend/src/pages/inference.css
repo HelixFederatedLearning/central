@@ -1,0 +1,216 @@
+/* Wrapper & header */
+.infer-wrap {
+  padding: 24px 0 32px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.infer-header h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.infer-header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Layout: model + input side by side, result full width */
+.infer-grid {
+  display: grid;
+  gap: 18px;
+  margin-top: 20px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr);
+}
+
+.infer-panel {
+  background:
+    radial-gradient(circle at top left, rgba(74, 163, 255, 0.12) 0, transparent 40%),
+    var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 16px 14px;
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.infer-panel:hover {
+  border-color: var(--border-soft);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.85);
+  transform: translateY(-1px);
+}
+
+.infer-panel h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.infer-panel--full {
+  grid-column: 1 / -1;
+}
+
+/* Model states */
+.infer-model-ok {
+  color: var(--success);
+  font-size: 14px;
+}
+
+.infer-model-error {
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.infer-model-id {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.infer-model-url {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.infer-model-url a {
+  color: var(--accent);
+}
+
+/* Input section */
+.infer-input {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Custom file chooser */
+.infer-file-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border-soft);
+  background: rgba(15, 23, 42, 0.9);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.12s ease;
+}
+
+.infer-file-label:hover {
+  border-color: var(--accent);
+  background: rgba(15, 23, 42, 0.98);
+  transform: translateY(-1px);
+}
+
+.infer-file-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.infer-file-title {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.infer-file-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.infer-file-button {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #00152a;
+  box-shadow: 0 8px 20px rgba(74, 163, 255, 0.4);
+  white-space: nowrap;
+}
+
+/* Hide the real input */
+.infer-file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Selected file meta */
+.infer-file-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.infer-file-meta span {
+  color: var(--fg);
+}
+
+/* Run button (full width) */
+.infer-run-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Result section */
+.infer-result-top {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+/* Probabilities table */
+.infer-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  border: 1px solid var(--border);
+}
+
+.infer-table th,
+.infer-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.infer-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.infer-table td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.infer-table tr:hover td {
+  background: rgba(15, 23, 42, 0.85);
+}
+
+/* Responsive */
+@media (max-width: 880px) {
+  .infer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .infer-panel--full {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .infer-wrap {
+    padding: 18px 0 24px;
+  }
+}

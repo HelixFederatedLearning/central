@@ -1,19 +1,340 @@
-:root{ --bg:#0b0f14; --fg:#e6edf3; --muted:#9aa4af; --card:#11161d; --accent:#4aa3ff; }
-*{box-sizing:border-box} body{margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--fg)}
-.shell{display:flex; min-height:100vh}
-.sidebar{width:240px; background:#0d131a; padding:20px; border-right:1px solid #1b2632}
-.sidebar h1{font-size:18px; margin:0 0 16px}
-.sidebar nav a{display:block; color:#c6d0da; padding:8px 0; text-decoration:none}
-.sidebar nav a:hover{color:#fff}
-main{flex:1; padding:24px}
-.page h2{margin:0 0 12px}
-.card{background:var(--card); padding:16px; border-radius:12px; border:1px solid #1b2632; margin-bottom:12px}
-.grid{display:grid; grid-template-columns:repeat(2,1fr); gap:12px}
-.table{width:100%; border-collapse:collapse}
-.table th,.table td{padding:10px; border-bottom:1px solid #1b2632}
-.btn{background:var(--accent); color:#00152a; border:0; padding:8px 12px; border-radius:8px; cursor:pointer}
-.btn:disabled{opacity:.6; cursor:not-allowed}
-.ticker{margin-top:16px; background:#0e151d; border:1px solid #1b2632; border-radius:12px; padding:10px}
-.ticker-title{font-weight:700; margin-bottom:6px}
-.muted{color:var(--muted)}
-.mono{font-family:ui-monospace,Monaco,Consolas,monospace}
+/* ====== Global Theme Tokens ====== */
+:root {
+  --bg: #050814;
+  --bg-elevated: #070c1a;
+  --fg: #e6edf3;
+  --muted: #9aa4af;
+
+  --card: #0b101e;
+  --card-soft: #0f172a;
+  --accent: #4aa3ff;
+  --accent-soft: rgba(74, 163, 255, 0.12);
+
+  --border: #1b2632;
+  --border-soft: #202b38;
+
+  --danger: #f97373;
+  --success: #22c55e;
+  --warning: #fbbf24;
+
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
+
+  --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.7);
+
+  --font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --font-mono: ui-monospace, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at top left, #0f172a 0, transparent 55%),
+    radial-gradient(circle at bottom right, #020617 0, transparent 55%),
+    var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ====== App Shell / Layout ====== */
+
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(15, 23, 42, 0.75) 0, transparent 55%),
+    linear-gradient(135deg, #020617 0%, #020814 40%, #050814 100%);
+}
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background: rgba(5, 10, 25, 0.98);
+  padding: 20px 18px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+}
+
+.sidebar h1 {
+  font-size: 18px;
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.sidebar-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* router NavLink */
+.sidebar nav a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #c6d0da;
+  padding: 8px 10px;
+  text-decoration: none;
+  font-size: 13px;
+  border-radius: 8px;
+  position: relative;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+/* active state from NavLink (react-router gives "active" class) */
+.sidebar nav a.active {
+  color: var(--accent);
+  background: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.9);
+}
+
+.sidebar nav a:hover {
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.85);
+  transform: translateX(1px);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-soft);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Main content area */
+main {
+  flex: 1;
+  padding: 24px 26px;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+/* ====== Generic Page / Card / Button / Table ====== */
+
+.page h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.card {
+  background:
+    radial-gradient(circle at top left, rgba(74, 163, 255, 0.08) 0, transparent 45%),
+    var(--card);
+  padding: 16px 16px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-soft);
+  transition:
+    border-color 0.16s ease,
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.card:hover {
+  border-color: var(--border-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.82);
+  background:
+    radial-gradient(circle at top left, rgba(74, 163, 255, 0.14) 0, transparent 52%),
+    var(--card-soft);
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.card-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Buttons */
+.btn {
+  background: var(--accent);
+  color: #00152a;
+  border: 0;
+  padding: 8px 13px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 12px 30px rgba(74, 163, 255, 0.4);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    opacity 0.12s ease,
+    filter 0.12s ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 40px rgba(74, 163, 255, 0.45);
+  filter: brightness(1.05);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 6px 18px rgba(74, 163, 255, 0.35);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Tables (generic) */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th,
+.table td {
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.table tr:hover td {
+  background: rgba(15, 23, 42, 0.75);
+}
+
+/* Ticker bar */
+.ticker {
+  margin-top: 16px;
+  background: #070e1a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ticker-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+  font-size: 13px;
+}
+
+/* Utilities */
+.muted {
+  color: var(--muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: rgba(15, 23, 42, 0.9);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.chip--success {
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+}
+
+.chip--danger {
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+}
+
+.chip--warning {
+  border-color: rgba(250, 204, 21, 0.5);
+  color: #fde68a;
+}
+
+/* Scrollbar for main (optional) */
+main::-webkit-scrollbar {
+  width: 8px;
+}
+main::-webkit-scrollbar-track {
+  background: transparent;
+}
+main::-webkit-scrollbar-thumb {
+  background: #111827;
+  border-radius: 999px;
+}
+
+/* ====== Responsive ====== */
+@media (max-width: 960px) {
+  .sidebar {
+    display: none; /* later can become topbar/hamburger if needed */
+  }
+
+  main {
+    padding: 18px 16px 24px;
+  }
+}
+
+@media (max-width: 600px) {
+  .page h2 {
+    font-size: 20px;
+  }
+
+  .card {
+    padding: 14px;
+  }
+}
