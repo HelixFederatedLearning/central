@@ -13,7 +13,10 @@ class Settings(BaseSettings):
     EMA_DECAY: float = 0.997
     MIN_TOTAL: int = 1                 # MVP
     MIN_HOSP: int = 0                  # MVP
-    CORS_ORIGINS: list[str] = ["http://localhost:5173"]
+    CORS_ORIGINS: list[str] = [
+    "http://localhost:5173",  # central UI
+    "http://localhost:5174",  # hospital UI (if it calls central directly for /v1/events)
+]
     class Config:
         env_file = ".env"
 
