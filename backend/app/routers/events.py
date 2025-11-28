@@ -1,43 +1,80 @@
 # app/routers/events.py
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import StreamingResponse
-from starlette.background import BackgroundTask
 import asyncio
-from ..core.events import bus
-from ..core.security import get_current_user_optional  # adjust import to your auth helper
+import json
+from fastapi import APIRouter, Request, Response, Depends, Query
+from starlette.responses import StreamingResponse
+from typing import AsyncIterator, Optional
+from ..db.session import get_session
+from sqlmodel import Session
 
 router = APIRouter()
 
-async def sse_format(message: str) -> bytes:
-    # data: ...\n\n
-    return f"data: {message}\n\n".encode("utf-8")
+# very small in-process pubsub
+_subscribers: set[asyncio.Queue] = set()
+_heartbeat_seconds = 15
 
-@router.get("/events")
-async def sse_events(request: Request, user=Depends(get_current_user_optional)):
-    """
-    Server-Sent Events endpoint.
-    Accepts either:
-      - Authorization header (if your get_current_user_optional reads it), or
-      - a ?token=... query param — make sure your auth helper supports it.
-    """
-    done = asyncio.Event()
-    async def event_generator():
-        # initial keepalive so the client marks 'connected'
-        yield await sse_format('{"type":"hello"}')
-        async for msg in bus.subscribe():
+def publish(event_type: str, payload: dict):
+    """Call this from other routers to broadcast an event."""
+    data = {"type": event_type, "data": payload}
+    msg = f"data: {json.dumps(data)}\n\n"
+    for q in list(_subscribers):
+        try:
+            q.put_nowait(msg)
+        except Exception:
+            pass
+
+async def _event_stream(request: Request) -> AsyncIterator[str]:
+    q: asyncio.Queue[str] = asyncio.Queue()
+    _subscribers.add(q)
+    try:
+        # initial hello so the client knows it’s connected
+        yield "event: hello\ndata: {}\n\n"
+        # periodic heartbeats to keep proxies happy
+        async def heartbeats():
+            while True:
+                await asyncio.sleep(_heartbeat_seconds)
+                await q.put("event: ping\ndata: {}\n\n")
+        hb_task = asyncio.create_task(heartbeats())
+
+        while True:
             # client disconnected?
             if await request.is_disconnected():
-                done.set()
                 break
-            yield await sse_format(msg)
+            try:
+                msg = await asyncio.wait_for(q.get(), timeout=_heartbeat_seconds + 5)
+                yield msg
+            except asyncio.TimeoutError:
+                # no-op; heartbeat keeps the pipe alive
+                pass
+        hb_task.cancel()
+    finally:
+        _subscribers.discard(q)
 
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        background=BackgroundTask(done.wait),
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",  # for proxies
-            "Connection": "keep-alive",
-        },
-    )
+@router.get("/events")
+async def sse_events(
+    request: Request,
+    token: Optional[str] = Query(default=None),
+    session: Session = Depends(get_session),
+):
+    """
+    Server-Sent Events stream.
+    Optional: `?token=...` (if you want to validate a central JWT later).
+    For now we don't block on token to keep EventSource simple.
+    """
+    # If you later want to validate `token`, do it here and return 401 on failure.
+    headers = {
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",  # for nginx
+    }
+    return StreamingResponse(_event_stream(request), media_type="text/event-stream", headers=headers)
+
+# Convenience helpers other modules can import:
+def sse_publish_delta(delta_row: dict):
+    publish("delta_received", delta_row)
+
+def sse_publish_round(round_row: dict):
+    publish("round_updated", round_row)
+
+def sse_publish_timer(ticks_left: int):
+    publish("timer", {"ticks_left": ticks_left})
