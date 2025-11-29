@@ -1,0 +1,156 @@
+central
+├── backend
+│   ├── app
+│   │   ├── core
+│   │   │   ├── bootstrap.py
+│   │   │   ├── events.py
+│   │   │   ├── runtime.py
+│   │   │   ├── scheduler.py
+│   │   │   ├── security.py
+│   │   │   ├── settings.py
+│   │   │   └── storage.py
+│   │   ├── db
+│   │   │   ├── models.py
+│   │   │   └── session.py
+│   │   ├── ml
+│   │   │   └── aggregate.py
+│   │   ├── routers
+│   │   │   ├── auth.py
+│   │   │   ├── deltas.py
+│   │   │   ├── events.py
+│   │   │   ├── infer.py
+│   │   │   ├── models.py
+│   │   │   ├── rounds.py
+│   │   │   └── settings.py
+│   │   ├── schemas
+│   │   │   └── common.py
+│   │   ├── services
+│   │   │   ├── aggregate.py
+│   │   │   ├── rounds.py
+│   │   │   └── scheduler.py
+│   │   └── main.py
+│   ├── migrations
+│   ├── scripts
+│   │   ├── store
+│   │   │   ├── current
+│   │   │   │   └── global_current.pth
+│   │   │   └── deltas
+│   │   ├── central.db
+│   │   └── export_onnx.py
+│   ├── store
+│   │   ├── current
+│   │   │   ├── global.onnx
+│   │   │   └── global.pth
+│   │   ├── deltas
+│   │   │   ├── 2d235092-946a-49d9-b903-aa6607b88a7f
+│   │   │   │   └── girish1234
+│   │   │   │       └── 8b0ce684-f580-43ff-a103-ba15be165d2a.pt
+│   │   │   ├── 38eb1d7b-1a9b-4086-91d7-5cb8bdc8be30
+│   │   │   ├── 4602757a-4af7-43ed-a842-7fbf470b1c76
+│   │   │   │   └── girish1234
+│   │   │   │       ├── 0373acf7-fca5-4cde-a77d-54ed30c97f5d.pt
+│   │   │   │       ├── 289ef32d-96ad-4940-a33e-6777c500da31.pt
+│   │   │   │       ├── 4cc349d1-fe90-48b8-a4a9-f46a0e4cadcf.pt
+│   │   │   │       ├── 65c1414f-e89b-4670-9547-1dcf6e63c670.pt
+│   │   │   │       ├── 8cd83518-4322-421d-bb06-ceb7b8945321.pt
+│   │   │   │       ├── 9c3ec5f4-9a4d-4f4d-aaf0-4ce194b169d0.pt
+│   │   │   │       ├── a3b91100-90b9-442e-a09e-b719e118e8e7.pt
+│   │   │   │       ├── a71294b7-f101-418c-9764-999593efb32b.pt
+│   │   │   │       ├── bf4768ff-d13a-42fb-b255-f1bd5fd2d496.pt
+│   │   │   │       ├── c2a0c631-7c65-420f-9148-d98d3813d7bf.pt
+│   │   │   │       ├── c690b519-e29f-4393-a79c-7b6f0b40ac75.pt
+│   │   │   │       ├── dbac18d9-70bd-4305-a239-2fdf3de7b0dd.pt
+│   │   │   │       ├── e1f3a6bb-c0c6-439c-a127-29846142a502.pt
+│   │   │   │       └── fefcdc47-bb9b-4ce8-beb7-c4efd5813671.pt
+│   │   │   ├── 5d4dfa21-9f97-4b12-9c72-7a268b022842
+│   │   │   │   └── girish1234
+│   │   │   │       ├── 01f619ae-b266-438a-81a9-c06e3b4801d3.pt
+│   │   │   │       ├── 023507f8-925f-4f73-851a-675f7662d27f.pt
+│   │   │   │       ├── 06ea1952-fc38-4c59-b1ad-31eff90b05a3.pt
+│   │   │   │       ├── 15d08803-0fac-4166-9ce4-21718b52abaa.pt
+│   │   │   │       ├── 22f4bc80-0a83-4597-a859-5db73565bab7.pt
+│   │   │   │       ├── 3d051f3f-6866-4dc2-bf31-c49fa95e08f5.pt
+│   │   │   │       ├── 59aba1f9-a883-40bd-82c4-1a0723859013.pt
+│   │   │   │       ├── 59b1df54-a8e2-4667-a6ae-9fef43a55abd.pt
+│   │   │   │       ├── 65995ae4-8512-4c90-9125-dde11d319b1c.pt
+│   │   │   │       ├── 6a1999a6-7c71-47dc-bc06-ff9a58f7f207.pt
+│   │   │   │       ├── 7bded778-2969-49aa-84b1-717375a45375.pt
+│   │   │   │       ├── 7dbd28c8-26d0-4fed-a7de-89af607ca9e0.pt
+│   │   │   │       ├── 96053f4a-7c49-4f43-9632-82f1343176fa.pt
+│   │   │   │       ├── b06c6c2c-a608-45e6-9e19-e9e5cf1f7938.pt
+│   │   │   │       ├── d020ed8c-f4ee-4cce-a2c3-52c2785bc2ab.pt
+│   │   │   │       └── eb3b5eab-6b36-4805-b749-b994213cdb07.pt
+│   │   │   ├── ae8ae7e6-a73c-497e-99a1-15f9881e452a
+│   │   │   │   └── girish1234
+│   │   │   │       ├── 1d6c610b-b9b1-4b84-9613-7ab17ff99012.pt
+│   │   │   │       ├── 24ccc375-ff67-463a-a7d1-c7fea242c44c.pt
+│   │   │   │       ├── 2ae5bcf0-063a-4e0f-a8b8-8fb64ef55a76.pt
+│   │   │   │       └── b9c18181-fa79-411c-a2b9-73854a419875.pt
+│   │   │   ├── bbe70078-ab7a-41fe-9f21-b9327511b771
+│   │   │   │   └── girish1234
+│   │   │   │       ├── 1b17ccd8-31ef-4d40-8ed7-f601970f1372.pt
+│   │   │   │       └── ab1090c6-c187-4fe1-b9d3-692e56556cf2.pt
+│   │   │   ├── dc5c0728-0c7a-45a0-9715-03d1a81e145c
+│   │   │   │   └── girish1234
+│   │   │   │       ├── 2a1b4fde-dceb-4b64-a342-58ed3bc85ba4.pt
+│   │   │   │       ├── 46458e89-d352-4769-9212-69218543fb57.pt
+│   │   │   │       └── f6cb0c1d-e89e-499f-851f-59f7794a02f6.pt
+│   │   │   └── fa1a7e82-5173-4037-9bc1-00af20aba1e9
+│   │   │       └── girish1234
+│   │   │           ├── 196ae504-a939-44f5-a2db-814e92b82541.pt
+│   │   │           ├── 4e5a302b-d9ce-49af-97c3-46ae2020883e.pt
+│   │   │           └── 79cbec34-64f6-40d2-956e-dcaa42999edc.pt
+│   │   └── models
+│   │       └── 156b0348-c2d5-4c00-a313-d5616c8279c2
+│   │           ├── global.onnx
+│   │           └── global.pth
+│   ├── .env
+│   ├── central.db
+│   ├── requirements.txt
+│   └── run.sh
+├── frontend
+│   ├── public
+│   │   └── ort
+│   │       ├── ort-wasm-simd-threaded.asyncify.wasm
+│   │       ├── ort-wasm-simd-threaded.jsep.wasm
+│   │       └── ort-wasm-simd-threaded.wasm
+│   ├── src
+│   │   ├── api
+│   │   │   ├── central.ts
+│   │   │   └── client.ts
+│   │   ├── components
+│   │   │   └── EventTicker.tsx
+│   │   ├── lib
+│   │   │   ├── api.ts
+│   │   │   ├── preprocess.ts
+│   │   │   └── useOnnxClient.ts
+│   │   ├── pages
+│   │   │   ├── Audit.tsx
+│   │   │   ├── Clients.tsx
+│   │   │   ├── dashboard.css
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── inference.css
+│   │   │   ├── Inference.tsx
+│   │   │   ├── Models.tsx
+│   │   │   ├── RoundDetail.tsx
+│   │   │   ├── rounds.css
+│   │   │   ├── Rounds.tsx
+│   │   │   └── Settings.tsx
+│   │   ├── state
+│   │   │   └── FedEventsProvider.tsx
+│   │   ├── store
+│   │   ├── styles
+│   │   ├── App.tsx
+│   │   ├── ErrorBoundary.tsx
+│   │   ├── main.tsx
+│   │   ├── routes.tsx
+│   │   └── styles.css
+│   ├── .env
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   └── vite.config.mts
+├── .gitignore
+├── package-lock.json
+├── tree.py
+└── tree.txt

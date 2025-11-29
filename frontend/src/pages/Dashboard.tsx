@@ -1,146 +1,35 @@
 // src/pages/Dashboard.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { getCurrentModel, getSettings, listRounds, openEventsStream } from "../lib/api";
+import React, { useEffect, useMemo, useState } from "react";
+import { useFedEvents } from "../state/FedEventsProvider";
 import "./dashboard.css";
 
-// Types that reflect your SSE payloads
-type DeltaReceivedEvt = {
-  type: "delta_received";
-  round_id: string;
-  client_id: string;
-  kind: "hospital" | "patient";
-  num_examples: number;
-  received_at: string; // ISO
-};
-
-type RoundOpenedEvt = {
-  type: "round_opened";
-  round_id: string;
-  opened_at: string; // ISO
-  window_minutes: number;
-};
-
-type RoundAggregatedEvt = {
-  type: "round_aggregated";
-  round_id: string;
-  aggregated_at: string; // ISO
-  new_model_id: string;
-  new_version: string;
-};
-
-type ModelUpdatedEvt = {
-  type: "current_model_updated";
-  model_id: string;
-  version: string;
-  at: string;
-};
-
-type AnyEvt = DeltaReceivedEvt | RoundOpenedEvt | RoundAggregatedEvt | ModelUpdatedEvt;
-
-type RoundLite = {
-  id: string;
-  status: "open" | "closed" | "aggregated" | string;
-  created_at?: string;
-  closed_at?: string | null;
-  // (optional) include counts if backend returns them
-  num_hospital?: number;
-  num_patient?: number;
-};
-
 export default function Dashboard() {
-  const [events, setEvents] = useState<AnyEvt[]>([]);
-  const [windowMinutes, setWindowMinutes] = useState<number | null>(null);
-  const [currentRound, setCurrentRound] = useState<RoundLite | null>(null);
-  const [currentModel, setCurrentModel] = useState<{ id: string; version: string } | null>(null);
-  const [openCounts, setOpenCounts] = useState<{ hospital: number; patient: number }>({ hospital: 0, patient: 0 });
-  const [openedAtIso, setOpenedAtIso] = useState<string | null>(null);
-
-  const esRef = useRef<EventSource | null>(null);
-
-  // bootstrap settings, rounds, model
-  useEffect(() => {
-    (async () => {
-      try {
-        const [settings, rounds, model] = await Promise.all([getSettings(), listRounds(), getCurrentModel()]);
-        if (settings?.window_minutes) setWindowMinutes(settings.window_minutes);
-
-        // pick most recent open round (if any)
-        const open = (rounds as RoundLite[]).find(r => r.status === "open") || null;
-        setCurrentRound(open || (rounds[0] ?? null));
-
-        if (open) {
-          // initialize counts if backend included them
-          setOpenCounts({
-            hospital: open.num_hospital ?? 0,
-            patient: open.num_patient ?? 0,
-          });
-        }
-
-        if (model && model.id) setCurrentModel({ id: model.id, version: model.version });
-      } catch (e) {
-        console.warn("bootstrap failed:", e);
-      }
-    })();
-  }, []);
-
-  // connect SSE
-  useEffect(() => {
-    const es = openEventsStream((msg) => {
-      try {
-        const data = JSON.parse(msg.data) as AnyEvt;
-        setEvents((prev) => [data, ...prev].slice(0, 200)); // keep last 200
-
-        if (data.type === "round_opened") {
-          setCurrentRound({ id: data.round_id, status: "open", created_at: data.opened_at });
-          setOpenedAtIso(data.opened_at);
-          setWindowMinutes(data.window_minutes);
-          setOpenCounts({ hospital: 0, patient: 0 });
-        }
-
-        if (data.type === "delta_received") {
-          setCurrentRound((r) => r && r.id === data.round_id ? r : { id: data.round_id, status: "open" });
-          setOpenedAtIso((iso) => iso ?? data.received_at); // if first delta before round_opened seen
-          setOpenCounts((c) => ({
-            hospital: c.hospital + (data.kind === "hospital" ? 1 : 0),
-            patient: c.patient + (data.kind === "patient" ? 1 : 0),
-          }));
-        }
-
-        if (data.type === "round_aggregated") {
-          // close current round UI and reset counts
-          if (currentRound?.id === data.round_id) {
-            setCurrentRound({ id: data.round_id, status: "aggregated", created_at: openedAtIso ?? undefined, closed_at: data.aggregated_at });
-            setOpenedAtIso(null);
-            setOpenCounts({ hospital: 0, patient: 0 });
-          }
-        }
-
-        if (data.type === "current_model_updated") {
-          setCurrentModel({ id: data.model_id, version: data.version });
-        }
-      } catch (e) {
-        // plain text keep-alives or malformed: ignore
-      }
-    });
-
-    esRef.current = es;
-    return () => { es.close(); esRef.current = null; };
-  }, [currentRound?.id, openedAtIso]);
-
-  // countdown: from openedAtIso + windowMinutes
-  const now = Date.now();
-  const cycleEndsAt = useMemo(() => {
-    if (!openedAtIso || !windowMinutes) return null;
-    return new Date(new Date(openedAtIso).getTime() + windowMinutes * 60_000).getTime();
-  }, [openedAtIso, windowMinutes]);
+  const {
+    events,
+    windowMinutes,
+    currentRound,
+    currentModel,
+    openCounts,
+    openedAtIso,
+  } = useFedEvents();
 
   const [tick, setTick] = useState(0);
+
   useEffect(() => {
     const t = setInterval(() => setTick((x) => x + 1), 1000);
     return () => clearInterval(t);
   }, []);
 
-  const remainingMs = cycleEndsAt ? Math.max(0, cycleEndsAt - now - (tick * 1000)) : null;
+  const cycleEndsAt = useMemo(() => {
+    if (!openedAtIso || !windowMinutes) return null;
+    return new Date(openedAtIso).getTime() + windowMinutes * 60_000;
+  }, [openedAtIso, windowMinutes]);
+
+  const now = Date.now();
+  const remainingMs = cycleEndsAt
+    ? Math.max(0, cycleEndsAt - now - tick * 1000)
+    : null;
+
   const remainingFmt = useMemo(() => {
     if (remainingMs == null) return "—";
     const s = Math.ceil(remainingMs / 1000);
@@ -166,7 +55,10 @@ export default function Dashboard() {
             Current Model:&nbsp;
             {currentModel ? (
               <>
-                <code>{currentModel.version}</code> <span className="muted">({currentModel.id.slice(0,8)}…)</span>
+                <code>{currentModel.version}</code>{" "}
+                <span className="muted">
+                  ({currentModel.id.slice(0, 8)}…)
+                </span>
               </>
             ) : (
               <span className="muted">none yet</span>
@@ -174,9 +66,15 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="dash-counters">
-          <div className="pill">Hospitals: <b>{openCounts.hospital}</b></div>
-          <div className="pill">Patients: <b>{openCounts.patient}</b></div>
-          <div className={`timer ${totalUpdates>=2 ? "ok" : ""}`}>{remainingFmt}</div>
+          <div className="pill">
+            Hospitals: <b>{openCounts.hospital}</b>
+          </div>
+          <div className="pill">
+            Patients: <b>{openCounts.patient}</b>
+          </div>
+          <div className={`timer ${totalUpdates >= 2 ? "ok" : ""}`}>
+            {remainingFmt}
+          </div>
         </div>
       </header>
 
@@ -184,11 +82,15 @@ export default function Dashboard() {
         <div className="cycle-row">
           <div>
             <div className="lbl">Round</div>
-            <div className="mono">{currentRound?.id ? currentRound.id : "—"}</div>
+            <div className="mono">
+              {currentRound?.id ? currentRound.id : "—"}
+            </div>
           </div>
           <div>
             <div className="lbl">Status</div>
-            <div className={`status ${currentRound?.status||"idle"}`}>{currentRound?.status || "idle"}</div>
+            <div className={`status ${currentRound?.status || "idle"}`}>
+              {currentRound?.status || "idle"}
+            </div>
           </div>
           <div className="grow">
             <div className="lbl">Cycle</div>
@@ -205,35 +107,49 @@ export default function Dashboard() {
         <div className="card-panel">
           <h3>Live Updates</h3>
           <ul className="feed">
-            {events.length === 0 && <li className="muted">No events yet</li>}
+            {events.length === 0 && (
+              <li className="muted">No events yet</li>
+            )}
             {events.map((e, i) => (
               <li key={i} className="feed-item">
                 {e.type === "delta_received" && (
                   <>
                     <span className={`tag ${e.kind}`}>{e.kind}</span>
-                    &nbsp;<b>{e.client_id}</b> sent <b>{e.num_examples}</b> images
-                    <span className="time">{new Date(e.received_at).toLocaleTimeString()}</span>
+                    &nbsp;<b>{e.client_id}</b> sent{" "}
+                    <b>{e.num_examples}</b> images
+                    <span className="time">
+                      {new Date(e.received_at).toLocaleTimeString()}
+                    </span>
                   </>
                 )}
                 {e.type === "round_opened" && (
                   <>
                     <span className="tag opened">round</span>
-                    &nbsp;Round opened <b>{e.round_id}</b> (window {e.window_minutes} min)
-                    <span className="time">{new Date(e.opened_at).toLocaleTimeString()}</span>
+                    &nbsp;Round opened <b>{e.round_id}</b> (window{" "}
+                    {e.window_minutes} min)
+                    <span className="time">
+                      {new Date(e.opened_at).toLocaleTimeString()}
+                    </span>
                   </>
                 )}
                 {e.type === "round_aggregated" && (
                   <>
                     <span className="tag agg">agg</span>
-                    &nbsp;Round <b>{e.round_id}</b> aggregated → model <code>{e.new_version}</code>
-                    <span className="time">{new Date(e.aggregated_at).toLocaleTimeString()}</span>
+                    &nbsp;Round <b>{e.round_id}</b> aggregated → model{" "}
+                    <code>{e.new_version}</code>
+                    <span className="time">
+                      {new Date(e.aggregated_at).toLocaleTimeString()}
+                    </span>
                   </>
                 )}
                 {e.type === "current_model_updated" && (
                   <>
                     <span className="tag model">model</span>
-                    &nbsp;Current model updated to <code>{e.version}</code>
-                    <span className="time">{new Date(e.at).toLocaleTimeString()}</span>
+                    &nbsp;Current model updated to{" "}
+                    <code>{e.version}</code>
+                    <span className="time">
+                      {new Date(e.at).toLocaleTimeString()}
+                    </span>
                   </>
                 )}
               </li>
@@ -244,14 +160,32 @@ export default function Dashboard() {
         <div className="card-panel">
           <h3>Round Snapshot</h3>
           <div className="kv">
-            <div className="kv-row"><div>Hospitals</div><div className="mono">{openCounts.hospital}</div></div>
-            <div className="kv-row"><div>Patients</div><div className="mono">{openCounts.patient}</div></div>
-            <div className="kv-row"><div>Total</div><div className="mono">{totalUpdates}</div></div>
-            <div className="kv-row"><div>Ends in</div><div className={`mono ${totalUpdates>=2?"ok":""}`}>{remainingFmt}</div></div>
+            <div className="kv-row">
+              <div>Hospitals</div>
+              <div className="mono">{openCounts.hospital}</div>
+            </div>
+            <div className="kv-row">
+              <div>Patients</div>
+              <div className="mono">{openCounts.patient}</div>
+            </div>
+            <div className="kv-row">
+              <div>Total</div>
+              <div className="mono">{totalUpdates}</div>
+            </div>
+            <div className="kv-row">
+              <div>Ends in</div>
+              <div
+                className={`mono ${
+                  totalUpdates >= 2 ? "ok" : ""
+                }`}
+              >
+                {remainingFmt}
+              </div>
+            </div>
           </div>
-          <p className="muted" style={{marginTop:12}}>
-            Aggregation &amp; model updates run automatically on the server.
-            This dashboard only displays live progress.
+          <p className="muted" style={{ marginTop: 12 }}>
+            Aggregation &amp; model updates run automatically on
+            the server. This dashboard only displays live progress.
           </p>
         </div>
       </section>

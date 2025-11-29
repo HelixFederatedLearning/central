@@ -1,41 +1,70 @@
-// src/lib/api.ts
-export const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-const API = `${BASE_URL}/v1`;
+// frontend/src/lib/api.ts
 
-export function getToken(): string | null {
-  return localStorage.getItem("token");
+const API_BASE =
+  import.meta.env.VITE_API_BASE || "http://localhost:8000/v1";
+
+export type SettingsResp = {
+  window_minutes: number;
+};
+
+export type RoundRow = {
+  id: string;
+  status: string;
+  created_at: string;
+  closed_at: string | null;
+  // aliases + optional counts (depending on backend)
+  window_start?: string;
+  window_end?: string;
+  num_hospital?: number | null;
+  num_patient?: number | null;
+};
+
+export type CurrentModelResp = {
+  id: string;
+  version: string;
+  artifact_url?: string;
+};
+
+async function getJSON<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`GET ${url} -> ${res.status} ${res.statusText} ${txt}`);
+  }
+  return res.json() as Promise<T>;
 }
 
-function authHeaders() {
-  const t = getToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
+export async function getSettings(): Promise<SettingsResp> {
+  return getJSON<SettingsResp>(`${API_BASE}/settings`);
 }
 
-export async function getSettings() {
-  const res = await fetch(`${API}/settings`, { headers: { ...authHeaders() } });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+export async function listRounds(): Promise<RoundRow[]> {
+  return getJSON<RoundRow[]>(`${API_BASE}/rounds`);
 }
 
-export async function listRounds() {
-  const res = await fetch(`${API}/rounds`, { headers: { ...authHeaders() } });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+export async function getCurrentModel(): Promise<CurrentModelResp | null> {
+  try {
+    return await getJSON<CurrentModelResp>(`${API_BASE}/models/current`);
+  } catch (e) {
+    console.warn("[api] getCurrentModel failed:", e);
+    return null;
+  }
 }
 
-export async function getCurrentModel() {
-  const res = await fetch(`${API}/models/current`, { headers: { ...authHeaders() } });
-  if (res.status === 404) return null; // no current model yet
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
+/**
+ * Open a Server-Sent Events connection to /v1/events.
+ * FedEventsProvider will pass a handler that does JSON.parse(ev.data).
+ */
+export function openEventsStream(
+  onMessage: (ev: MessageEvent) => void
+): EventSource {
+  const url = `${API_BASE}/events`; // -> e.g. http://localhost:8000/v1/events
+  const es = new EventSource(url);
 
-export function openEventsStream(onEvent: (e: MessageEvent) => void): EventSource {
-  // SSE does not support Authorization header, so append token via query param (backend should allow it)
-  const t = getToken();
-  const url = new URL(`${API}/events`);
-  if (t) url.searchParams.set("token", t);
-  const es = new EventSource(url.toString(), { withCredentials: false });
-  es.onmessage = onEvent;
+  es.onmessage = onMessage;
+  es.onerror = (err) => {
+    console.warn("[api] SSE error:", err);
+  };
+
   return es;
 }

@@ -15,6 +15,9 @@ from ..core.storage import sha256_file, set_current_global
 from ..core.events import publish
 from ..services.aggregate import load_delta_blobs, typed_aggregate
 
+
+
+
 router = APIRouter()
 
 
@@ -197,3 +200,28 @@ def aggregate(round_id: str, session: Session = Depends(get_session)):
         "checksum": m.checksum,
         "url": f"/artifacts/{m.id}/global.pth",
     }
+def _list_rounds(session: Session) -> list[Round]:
+    q = select(Round).order_by(Round.created_at.desc())
+    return list(session.exec(q))
+
+@router.get("/rounds")
+def list_rounds(session: Session = Depends(get_session)):
+    rows = _list_rounds(session)
+    out = []
+    for r in rows:
+        # some DBs may not have these attrs yet, so use getattr fallback
+        ws = getattr(r, "window_start", None) or r.created_at
+        we = getattr(r, "window_end", None) or r.closed_at
+        out.append(
+            {
+                "id": r.id,
+                "status": r.status,
+                "created_at": r.created_at,
+                "closed_at": r.closed_at,
+                "window_start": ws,
+                "window_end": we,
+                "num_hospital": getattr(r, "num_hospital", None),
+                "num_patient": getattr(r, "num_patient", None),
+            }
+        )
+    return out

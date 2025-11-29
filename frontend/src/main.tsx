@@ -12,9 +12,10 @@
 // import Clients from "./pages/Clients";
 // import Settings from "./pages/Settings";
 // import Audit from "./pages/Audit";
-// import ErrorBoundary from "./ErrorBoundary";
-// import "./styles.css";
 // import Inference from "./pages/Inference";
+// import ErrorBoundary from "./ErrorBoundary";
+// import { FedEventsProvider } from "./state/FedEventsProvider";
+// import "./styles.css";
 
 // const router = createBrowserRouter([
 //   {
@@ -28,18 +29,20 @@
 //       { path: "clients", element: <Clients /> },
 //       { path: "settings", element: <Settings /> },
 //       { path: "audit", element: <Audit /> },
-      
+//       { path: "inference", element: <Inference /> },
 //     ],
 //   },
 // ]);
 
 // const qc = new QueryClient();
 
-// ReactDOM.createRoot(document.getElementById("root")!).render(
+// ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
 //   <React.StrictMode>
 //     <ErrorBoundary>
 //       <QueryClientProvider client={qc}>
-//         <RouterProvider router={router} />
+//         <FedEventsProvider>
+//           <RouterProvider router={router} />
+//         </FedEventsProvider>
 //       </QueryClientProvider>
 //     </ErrorBoundary>
 //   </React.StrictMode>
@@ -60,6 +63,8 @@ import Clients from "./pages/Clients";
 import Settings from "./pages/Settings";
 import Audit from "./pages/Audit";
 import Inference from "./pages/Inference";
+import ErrorBoundary from "./ErrorBoundary";
+import { FedEventsProvider } from "./state/FedEventsProvider";
 import "./styles.css";
 
 const router = createBrowserRouter([
@@ -81,10 +86,14 @@ const router = createBrowserRouter([
 
 const qc = new QueryClient();
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <QueryClientProvider client={qc}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={qc}>
+        <FedEventsProvider>
+          <RouterProvider router={router} />
+        </FedEventsProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );
