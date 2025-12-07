@@ -13,10 +13,10 @@
 //     openedAtIso,
 //   } = useFedEvents();
 
-//   const [tick, setTick] = useState(0);
+//   const [now, setNow] = useState(Date.now());
 
 //   useEffect(() => {
-//     const t = setInterval(() => setTick((x) => x + 1), 1000);
+//     const t = setInterval(() => setNow(Date.now()), 1000);
 //     return () => clearInterval(t);
 //   }, []);
 
@@ -25,10 +25,7 @@
 //     return new Date(openedAtIso).getTime() + windowMinutes * 60_000;
 //   }, [openedAtIso, windowMinutes]);
 
-//   const now = Date.now();
-//   const remainingMs = cycleEndsAt
-//     ? Math.max(0, cycleEndsAt - now - tick * 1000)
-//     : null;
+//   const remainingMs = cycleEndsAt ? Math.max(0, cycleEndsAt - now) : null;
 
 //   const remainingFmt = useMemo(() => {
 //     if (remainingMs == null) return "—";
@@ -174,11 +171,7 @@
 //             </div>
 //             <div className="kv-row">
 //               <div>Ends in</div>
-//               <div
-//                 className={`mono ${
-//                   totalUpdates >= 2 ? "ok" : ""
-//                 }`}
-//               >
+//               <div className={`mono ${totalUpdates >= 2 ? "ok" : ""}`}>
 //                 {remainingFmt}
 //               </div>
 //             </div>
@@ -196,6 +189,25 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useFedEvents } from "../state/FedEventsProvider";
 import "./dashboard.css";
+
+// Helper: parse server timestamps.
+// If there is no timezone in the string, assume UTC.
+function parseServerTime(value: string | null | undefined): Date {
+  if (!value) return new Date(NaN);
+  const s = String(value);
+  // has 'Z' or an explicit offset (+05:30, -0300, etc.)?
+  if (/[zZ]|[+\-]\d\d:?\d\d$/.test(s)) {
+    return new Date(s);
+  }
+  // otherwise assume it's UTC and append 'Z'
+  return new Date(s + "Z");
+}
+
+function formatServerTime(value: string | null | undefined): string {
+  const d = parseServerTime(value);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleTimeString();
+}
 
 export default function Dashboard() {
   const {
@@ -216,7 +228,9 @@ export default function Dashboard() {
 
   const cycleEndsAt = useMemo(() => {
     if (!openedAtIso || !windowMinutes) return null;
-    return new Date(openedAtIso).getTime() + windowMinutes * 60_000;
+    return (
+      parseServerTime(openedAtIso).getTime() + windowMinutes * 60_000
+    );
   }, [openedAtIso, windowMinutes]);
 
   const remainingMs = cycleEndsAt ? Math.max(0, cycleEndsAt - now) : null;
@@ -309,7 +323,7 @@ export default function Dashboard() {
                     &nbsp;<b>{e.client_id}</b> sent{" "}
                     <b>{e.num_examples}</b> images
                     <span className="time">
-                      {new Date(e.received_at).toLocaleTimeString()}
+                      {formatServerTime(e.received_at)}
                     </span>
                   </>
                 )}
@@ -319,7 +333,7 @@ export default function Dashboard() {
                     &nbsp;Round opened <b>{e.round_id}</b> (window{" "}
                     {e.window_minutes} min)
                     <span className="time">
-                      {new Date(e.opened_at).toLocaleTimeString()}
+                      {formatServerTime(e.opened_at)}
                     </span>
                   </>
                 )}
@@ -329,7 +343,7 @@ export default function Dashboard() {
                     &nbsp;Round <b>{e.round_id}</b> aggregated → model{" "}
                     <code>{e.new_version}</code>
                     <span className="time">
-                      {new Date(e.aggregated_at).toLocaleTimeString()}
+                      {formatServerTime(e.aggregated_at)}
                     </span>
                   </>
                 )}
@@ -339,7 +353,7 @@ export default function Dashboard() {
                     &nbsp;Current model updated to{" "}
                     <code>{e.version}</code>
                     <span className="time">
-                      {new Date(e.at).toLocaleTimeString()}
+                      {formatServerTime(e.at)}
                     </span>
                   </>
                 )}
